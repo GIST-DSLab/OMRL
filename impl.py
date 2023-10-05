@@ -13,7 +13,7 @@ from itertools import count
 import logging
 from utils import Experience
 from losses import policy_loss_on_batch, vf_loss_on_batch
-from envs_arc import ArcEnv
+from envs import ArcEnv
 from arcle.loaders import ARCLoader, Loader, MiniARCLoader
 import gymnasium as gym
 import numpy as np
