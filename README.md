@@ -3,6 +3,7 @@
 This repo contains a simplified implementation of the MACAW algorithm (full code [here](https://github.com/eric-mitchell/macaw)) for easier inspection and extension.
 
 Run the code with `python create_buffers.py`.
+
 Run the code with `python impl.py`.
 
 ## Overview
