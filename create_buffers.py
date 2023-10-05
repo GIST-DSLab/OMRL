@@ -5,10 +5,14 @@ from typing import Optional, Tuple, List
 from collections import defaultdict
 from arcle.loaders import ARCLoader, Loader, MiniARCLoader
 import gymnasium as gym
+import hydra
+from hydra.utils import get_original_cwd
+import json
+from collections import namedtuple
 
 
 arcenv = gym.make('ARCLE/O2ARCv2Env-v0',render_mode=None, data_loader= ARCLoader(), max_grid_size=(30,30), colors = 10, max_episode_steps=None)
-minienv = gym.make('ARCLE/O2ARCv2Env-v0',render_mode=None, data_loader=MiniARCLoader(), max_grid_size=(30,30), colors = 10, max_episode_steps=None)
+minienv = gym.make('ARCLE/O2ARCv2Env-v0',render_mode=None, data_loader= MiniARCLoader(), max_grid_size=(30,30), colors = 10, max_episode_steps=None)
 
 failure_trace = []
 
@@ -76,7 +80,32 @@ def action_convert(action_entry):
 
     return op
 
-def create_features(task_dict):
+@hydra.main(config_path="config", config_name="config.yaml")
+def create_features(args):
+
+    traces = []
+    traces_info = []
+
+    with open(f"{get_original_cwd()}/{args.task_config}", "r") as f:
+        task_config = json.load(
+            f, object_hook=lambda d: namedtuple("X", d.keys())(*d.values())
+        )
+
+    with open(task_config.traces, 'rb') as fp:
+        traces:List = pickle.load(fp)
+    with open(task_config.traces_info, 'rb') as fp:
+        traces_info:List = pickle.load(fp)
+
+    task_dict = defaultdict(list)
+    for idx, (trace, info) in enumerate(zip(traces, traces_info)):
+        name, subtask, isGoal = info
+        name += "_" + str(subtask)
+
+        env = set_env(traces_info[idx][0])
+        obs_init, _ = env.reset(options= {'adaptation':False, 'prob_index':findbyname(traces_info[idx][0]), 'subprob_index': traces_info[idx][1]})
+        
+        task_dict[name].append((idx, obs_init))
+
 
     discount_factor = 0.99
     file_no = 0
@@ -147,13 +176,13 @@ def create_features(task_dict):
                 obs_after = obs_before.copy()
                 cnt += 1
         
-        with open("/home/sjkim/macaw-min/macaw_offline_data/arc/env_arc_train_task%d.pkl" % (file_no), "wb") as f:
+        with open(task_config.task_paths.format(file_no), 'wb') as f:
             li = [{}]
             li[0]['task_no'] = task_no
             li[0]['subtask_no'] = subtask_no
             pickle.dump(li, f, pickle.HIGHEST_PROTOCOL)
 
-        with h5py.File('/home/sjkim/macaw-min/macaw_offline_data/arc/buffers_arc_train_%d_sub_task_0.hdf5' % (file_no), 'w') as f:
+        with h5py.File(task_config.train_buffer_paths.format(file_no), 'w') as f:
             f.create_dataset('obs', data=obs.reshape(cnt, 900), maxshape = (cnt, 900))
             f.create_dataset('next_obs', data=next_obs.reshape(cnt, 900), maxshape = (cnt, 900))
             f.create_dataset('terminal_obs', data=terminal_obs.reshape(cnt, 900), maxshape = (cnt, 900))
@@ -168,21 +197,4 @@ def create_features(task_dict):
         file_no += 1
 
 if __name__ == "__main__":
-    traces = []
-    traces_info = []
-    with open('/home/sjkim/macaw-min/test.pickle', 'rb') as fp:
-        traces:List = pickle.load(fp)
-    with open('/home/sjkim/macaw-min/test_info.pickle', 'rb') as fp:
-        traces_info:List = pickle.load(fp)
-
-    task_dict = defaultdict(list)
-    for idx, (trace, info) in enumerate(zip(traces, traces_info)):
-        name, subtask, isGoal = info
-        name += "_" + str(subtask)
-
-        env = set_env(traces_info[idx][0])
-        obs_init, _ = env.reset(options= {'adaptation':False, 'prob_index':findbyname(traces_info[idx][0]), 'subprob_index': traces_info[idx][1]})
-        
-        task_dict[name].append((idx, obs_init))
-
-    create_features(task_dict)
+    create_features()
