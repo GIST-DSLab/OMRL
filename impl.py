@@ -24,7 +24,6 @@ LOG = logging.getLogger(__name__)
 def rollout_policy(policy: MLP, env, render: bool = False) -> List[Experience]:
     trajectory = []
     idx = env.get_idx()
-    # print("!!!!!!!!!!!!!ROLLOUT POLICY IDX:", idx)
     state = env.env.reset(options= {'adaptation':False, 'prob_index':env.findbyname(env.traces_info[idx][0]), 'subprob_index': env.traces_info[idx][1]})
     if render:
         env.env.render()
@@ -169,10 +168,8 @@ def run(args):
         if train_step_idx % args.rollout_interval == 0:
             LOG.info(f"Train step {train_step_idx}")
 
-        # import pdb; pdb.set_trace()
         for train_task_idx, task_buffers in train_task_buffers:
             env.set_task_idx(train_task_idx)
-            # print("!!!!!!!!!!!!!TRAIN TASK IDX:", train_task_idx)
 
             inner_batch = task_buffers.sample(
                 args.inner_batch_size, return_dict=True, device=args.device
