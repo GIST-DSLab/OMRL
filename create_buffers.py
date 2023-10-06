@@ -1,20 +1,19 @@
 import h5py
 import pickle
 import numpy as np
-from typing import Optional, Tuple, List
+from typing import List
 from collections import defaultdict
-from arcle.loaders import ARCLoader, Loader, MiniARCLoader
+from arcle.loaders import ARCLoader, MiniARCLoader
 import gymnasium as gym
 import hydra
-from hydra.utils import get_original_cwd
 import json
 from collections import namedtuple
 import os
 
 
 PATH = os.path.dirname(os.path.abspath(__file__))
-arcenv = gym.make('ARCLE/O2ARCv2Env-v0',render_mode=None, data_loader= ARCLoader(), max_grid_size=(30,30), colors = 10, max_episode_steps=None)
-minienv = gym.make('ARCLE/O2ARCv2Env-v0',render_mode=None, data_loader= MiniARCLoader(), max_grid_size=(30,30), colors = 10, max_episode_steps=None)
+arcenv = gym.make('ARCLE/O2ARCv2Env-v0',render_mode=None, data_loader=ARCLoader(), max_grid_size=(30,30), colors=10, max_episode_steps=None)
+minienv = gym.make('ARCLE/O2ARCv2Env-v0',render_mode=None, data_loader=MiniARCLoader(), max_grid_size=(30,30), colors=10, max_episode_steps=None)
 
 def set_env(name):
     for i, aa in enumerate(ARCLoader().data):

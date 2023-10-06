@@ -14,12 +14,11 @@ import logging
 from utils import Experience
 from losses import policy_loss_on_batch, vf_loss_on_batch
 from envs import ArcEnv
-from arcle.loaders import ARCLoader, Loader, MiniARCLoader
-import gymnasium as gym
 import numpy as np
+import os
 
 LOG = logging.getLogger(__name__)
-
+PATH = os.path.dirname(os.path.abspath(__file__))
 
 def rollout_policy(policy: MLP, env, render: bool = False) -> List[Experience]:
     trajectory = []
@@ -130,9 +129,9 @@ def get_env(args, task_config):
     #         tasks.append(task_info[0])
     # if args.advantage_head_coef == 0:
     #     args.advantage_head_coef = None  
-    with open(task_config.traces, 'rb') as fp:
+    with open(f"{PATH}/{task_config.traces}", 'rb') as fp:
         traces:List = pickle.load(fp)
-    with open(task_config.traces_info, 'rb') as fp:
+    with open(f"{PATH}/{task_config.traces_info}", 'rb') as fp:
         traces_info:List = pickle.load(fp)
 
     return ArcEnv(traces=traces, traces_info=traces_info, include_goal=True)
@@ -155,7 +154,7 @@ def get_opts_and_lrs(args, policy, vf):
 
 @hydra.main(config_path="config", config_name="config.yaml")
 def run(args):
-    with open(f"{get_original_cwd()}/{args.task_config}", "r") as f:
+    with open(f"{PATH}/{args.task_config}", "r") as f:
         task_config = json.load(
             f, object_hook=lambda d: namedtuple("X", d.keys())(*d.values())
         )
