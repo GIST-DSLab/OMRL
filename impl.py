@@ -85,7 +85,7 @@ def build_networks_and_buffers(args, env, task_config):
 
     s, e = map(int, task_config.train_tasks)
     train_buffer_paths = [
-        (idx, task_config.train_buffer_paths.format(idx)) for idx in range(s, e)
+        (idx, f"{PATH}/{task_config.train_buffer_paths.format(idx)}") for idx in range(s, e)
     ]
 
     train_buffers = [
@@ -102,7 +102,7 @@ def build_networks_and_buffers(args, env, task_config):
     
     s, e = map(int, task_config.test_tasks)
     test_buffer_paths = [
-        (idx, task_config.test_buffer_paths.format(idx)) for idx in range(s, e)
+        (idx, f"{PATH}/{task_config.test_buffer_paths.format(idx)}") for idx in range(s, e)
     ]
 
     test_buffers = [
