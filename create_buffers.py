@@ -9,12 +9,12 @@ import hydra
 from hydra.utils import get_original_cwd
 import json
 from collections import namedtuple
+import os
 
 
+PATH = os.path.dirname(os.path.abspath(__file__))
 arcenv = gym.make('ARCLE/O2ARCv2Env-v0',render_mode=None, data_loader= ARCLoader(), max_grid_size=(30,30), colors = 10, max_episode_steps=None)
 minienv = gym.make('ARCLE/O2ARCv2Env-v0',render_mode=None, data_loader= MiniARCLoader(), max_grid_size=(30,30), colors = 10, max_episode_steps=None)
-
-failure_trace = []
 
 def set_env(name):
     for i, aa in enumerate(ARCLoader().data):
@@ -86,14 +86,14 @@ def create_features(args):
     traces = []
     traces_info = []
 
-    with open(f"{get_original_cwd()}/{args.task_config}", "r") as f:
+    with open(f"{PATH}/{args.task_config}", "r") as f:
         task_config = json.load(
             f, object_hook=lambda d: namedtuple("X", d.keys())(*d.values())
         )
 
-    with open(task_config.traces, 'rb') as fp:
+    with open(f"{PATH}/{task_config.traces}", 'rb') as fp:
         traces:List = pickle.load(fp)
-    with open(task_config.traces_info, 'rb') as fp:
+    with open(f"{PATH}/{task_config.traces_info}", 'rb') as fp:
         traces_info:List = pickle.load(fp)
 
     task_dict = defaultdict(list)
@@ -153,7 +153,6 @@ def create_features(args):
                 terminal_obs[cnt] = obs_terminal.copy()
                 actions[cnt] = action_convert(traces[id][i])
 
-                #print("!!!!!!!!!", traces[id][i][:-1])
                 isTerminal = True
                 for x in range(30):
                     for y in range(30):
@@ -164,7 +163,6 @@ def create_features(args):
                         break
 
                 if isTerminal:
-                    #print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", id, task_no, subtask_no)
                     terminals[cnt] = True
                     rewards[cnt] = 1 # sparse rewards 
                     mc_rewards[cnt] = rewards[cnt]
@@ -176,13 +174,13 @@ def create_features(args):
                 obs_after = obs_before.copy()
                 cnt += 1
         
-        with open(task_config.task_paths.format(file_no), 'wb') as f:
+        with open(f"{PATH}/{task_config.task_paths.format(file_no)}", 'wb') as f:
             li = [{}]
             li[0]['task_no'] = task_no
             li[0]['subtask_no'] = subtask_no
             pickle.dump(li, f, pickle.HIGHEST_PROTOCOL)
 
-        with h5py.File(task_config.train_buffer_paths.format(file_no), 'w') as f:
+        with h5py.File(f"{PATH}/{task_config.train_buffer_paths.format(file_no)}", 'w') as f:
             f.create_dataset('obs', data=obs.reshape(cnt, 900), maxshape = (cnt, 900))
             f.create_dataset('next_obs', data=next_obs.reshape(cnt, 900), maxshape = (cnt, 900))
             f.create_dataset('terminal_obs', data=terminal_obs.reshape(cnt, 900), maxshape = (cnt, 900))
