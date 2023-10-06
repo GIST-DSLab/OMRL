@@ -13,3 +13,4 @@ device: cuda
 outer_batch_size: 4
 inner_batch_size: 4
 rollout_interval: 250
+model_save_interval: 250

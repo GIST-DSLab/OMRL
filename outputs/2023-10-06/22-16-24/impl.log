@@ -1,0 +1,33 @@
+[2023-10-06 22:16:27,711][__main__][INFO] - Train step 2
+[2023-10-06 22:16:29,973][__main__][INFO] - Task 90 reward: 0
+[2023-10-06 22:16:30,061][__main__][INFO] - Task 91 reward: 0
+[2023-10-06 22:16:30,148][__main__][INFO] - Task 92 reward: 0
+[2023-10-06 22:16:30,235][__main__][INFO] - Task 93 reward: 200
+[2023-10-06 22:16:30,324][__main__][INFO] - Task 94 reward: 0
+[2023-10-06 22:16:30,411][__main__][INFO] - Task 95 reward: 0
+[2023-10-06 22:16:30,497][__main__][INFO] - Task 96 reward: 0
+[2023-10-06 22:16:30,584][__main__][INFO] - Task 97 reward: 0
+[2023-10-06 22:16:30,671][__main__][INFO] - Task 98 reward: 0
+[2023-10-06 22:16:30,759][__main__][INFO] - Task 99 reward: 0
+[2023-10-06 22:16:32,993][__main__][INFO] - Train step 4
+[2023-10-06 22:16:35,180][__main__][INFO] - Task 90 reward: 0
+[2023-10-06 22:16:35,269][__main__][INFO] - Task 91 reward: 0
+[2023-10-06 22:16:35,360][__main__][INFO] - Task 92 reward: 0
+[2023-10-06 22:16:35,449][__main__][INFO] - Task 93 reward: 200
+[2023-10-06 22:16:35,536][__main__][INFO] - Task 94 reward: 0
+[2023-10-06 22:16:35,623][__main__][INFO] - Task 95 reward: 0
+[2023-10-06 22:16:35,711][__main__][INFO] - Task 96 reward: 0
+[2023-10-06 22:16:35,798][__main__][INFO] - Task 97 reward: 0
+[2023-10-06 22:16:35,885][__main__][INFO] - Task 98 reward: 0
+[2023-10-06 22:16:35,972][__main__][INFO] - Task 99 reward: 0
+[2023-10-06 22:16:38,235][__main__][INFO] - Train step 6
+[2023-10-06 22:16:40,478][__main__][INFO] - Task 90 reward: 0
+[2023-10-06 22:16:40,567][__main__][INFO] - Task 91 reward: 0
+[2023-10-06 22:16:40,663][__main__][INFO] - Task 92 reward: 0
+[2023-10-06 22:16:40,762][__main__][INFO] - Task 93 reward: 200
+[2023-10-06 22:16:40,848][__main__][INFO] - Task 94 reward: 0
+[2023-10-06 22:16:40,936][__main__][INFO] - Task 95 reward: 0
+[2023-10-06 22:16:41,023][__main__][INFO] - Task 96 reward: 0
+[2023-10-06 22:16:41,110][__main__][INFO] - Task 97 reward: 0
+[2023-10-06 22:16:41,196][__main__][INFO] - Task 98 reward: 0
+[2023-10-06 22:16:41,284][__main__][INFO] - Task 99 reward: 0
