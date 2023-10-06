@@ -3,4 +3,5 @@ numpy
 higher
 hydra-core
 h5py
-arcle
+arcle==0.2.1
+dill

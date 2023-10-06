@@ -4,9 +4,11 @@ This repo contains a simplified implementation of the MACAW algorithm (full code
 
 Run the code like below.
 
-`python create_buffers.py`.
+`python create_buffers.py` (optional: if you want to make buffers with offline data).
 
-`python impl.py`.
+`python train.py` (optional: if you want to train meta-RL models).
+
+`python test.py`.
 
 ## Overview
 
