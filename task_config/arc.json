@@ -1,11 +1,11 @@
 {
     "env": "arc",
-    "task_paths": "data/macaw_offline_data/arc/env_arc_train_task{}.pkl",
+    "task_paths": "data/macaw_offline_data/env_arc_train_task{}.pkl",
     "total_tasks": 100,
     "train_tasks": [0, 90],
     "test_tasks": [90, 100],
-    "train_buffer_paths": "data/macaw_offline_data/arc/buffers_arc_train_{}_sub_task_0.hdf5",
-    "test_buffer_paths": "data/macaw_offline_data/arc/buffers_arc_train_{}_sub_task_0.hdf5",
+    "train_buffer_paths": "data/macaw_offline_data/buffers_arc_train_{}_sub_task_0.hdf5",
+    "test_buffer_paths": "data/macaw_offline_data/buffers_arc_train_{}_sub_task_0.hdf5",
     "traces": "data/user_trace_data/test.pickle",
     "traces_info": "data/user_trace_data/test_info.pickle"
 }
