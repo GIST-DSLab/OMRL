@@ -27,7 +27,7 @@ def run():
     total_reward = {}
     acc, tot = 0, 0
 
-    # wandb.init(project='macaw-min', config=dict(args))
+    wandb.init(project='macaw-min', config=dict(args))
 
     '''<<<< LOAD ARGUMENTS >>>>'''
     with open(f"{PATH}/{args.task_config}", "r") as f:
@@ -149,9 +149,10 @@ def run():
 
 
     sum_adapted_reward = sum(list(total_reward.values()))
-    # wandb.log({"sum_adapted_reward": sum_adapted_reward})
+    acc /= tot
+    wandb.log({"sum_adapted_reward": sum_adapted_reward, "accuracy": acc})
 
-    return sum_adapted_reward, acc / tot
+    return sum_adapted_reward, acc
 
 if __name__ == "__main__":
     result = run()
