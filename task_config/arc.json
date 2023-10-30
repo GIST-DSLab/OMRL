@@ -9,8 +9,7 @@
     "traces": "data/user_trace_data/test.pickle",
     "traces_info": "data/user_trace_data/test_info.pickle",
     "model_paths": "models",
-    "model_policy": "policy_steps_4_train_0_90_test_90_100.pt",
-    "model_vf": "vf_steps_4_train_0_90_test_90_100.pt",
-    "eval_task_paths": "data/original_arc_data/evaluation",
-    "eval_task": "00576224.json"
+    "model_policy": "policy_steps_100000_train_0_90_test_90_100.pt",
+    "model_vf": "vf_steps_100000_train_0_90_test_90_100.pt",
+    "eval_task_paths": "data/original_arc_data/evaluation"
 }
