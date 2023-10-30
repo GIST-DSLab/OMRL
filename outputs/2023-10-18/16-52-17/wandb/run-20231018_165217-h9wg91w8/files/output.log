@@ -1,0 +1,10 @@
+Loading trajectories from /home/sjkim/ICLR2023/data/macaw_offline_data/buffers_arc_train_0_sub_task_0.hdf5
+Loading trajectories from /home/sjkim/ICLR2023/data/macaw_offline_data/buffers_arc_train_1_sub_task_0.hdf5
+Loading trajectories from /home/sjkim/ICLR2023/data/macaw_offline_data/buffers_arc_train_0_sub_task_0.hdf5
+Loading trajectories from /home/sjkim/ICLR2023/data/macaw_offline_data/buffers_arc_train_1_sub_task_0.hdf5
+Error executing job with overrides: []
+Traceback (most recent call last):
+  File "/home/sjkim/ICLR2023/train.py", line 234, in run
+    wandb.log({"task_idx": test_task_idx,
+UnboundLocalError: local variable 'test_task_idx' referenced before assignment
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.

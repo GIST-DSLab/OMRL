@@ -1,0 +1,12 @@
+[2023-10-18 16:57:03,406][__main__][INFO] - Train step 2500
+[2023-10-18 16:57:03,550][__main__][INFO] - Task 0 reward: 0
+[2023-10-18 16:57:03,637][__main__][INFO] - Task 1 reward: 0
+[2023-10-18 16:59:14,750][__main__][INFO] - Train step 5000
+[2023-10-18 16:59:14,895][__main__][INFO] - Task 0 reward: 0
+[2023-10-18 16:59:14,979][__main__][INFO] - Task 1 reward: 0
+[2023-10-18 17:01:25,871][__main__][INFO] - Train step 7500
+[2023-10-18 17:01:26,016][__main__][INFO] - Task 0 reward: 0
+[2023-10-18 17:01:26,101][__main__][INFO] - Task 1 reward: 0
+[2023-10-18 17:03:38,026][__main__][INFO] - Train step 10000
+[2023-10-18 17:03:38,171][__main__][INFO] - Task 0 reward: 0
+[2023-10-18 17:03:38,256][__main__][INFO] - Task 1 reward: 0

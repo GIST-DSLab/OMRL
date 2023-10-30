@@ -1,0 +1,30 @@
+Loading trajectories from /home/sjkim/ICLR2023/data/macaw_offline_data/buffers_arc_train_0_sub_task_0.hdf5
+Loading trajectories from /home/sjkim/ICLR2023/data/macaw_offline_data/buffers_arc_train_1_sub_task_0.hdf5
+Loading trajectories from /home/sjkim/ICLR2023/data/macaw_offline_data/buffers_arc_train_0_sub_task_0.hdf5
+Loading trajectories from /home/sjkim/ICLR2023/data/macaw_offline_data/buffers_arc_train_1_sub_task_0.hdf5
+Traceback (most recent call last):
+  File "/home/sjkim/ICLR2023/train.py", line 249, in <module>
+    run()
+  File "/home/sjkim/arcle_env/lib/python3.10/site-packages/hydra/main.py", line 94, in decorated_main
+    _run_hydra(
+  File "/home/sjkim/arcle_env/lib/python3.10/site-packages/hydra/_internal/utils.py", line 394, in _run_hydra
+    _run_app(
+  File "/home/sjkim/arcle_env/lib/python3.10/site-packages/hydra/_internal/utils.py", line 457, in _run_app
+    run_and_report(
+  File "/home/sjkim/arcle_env/lib/python3.10/site-packages/hydra/_internal/utils.py", line 220, in run_and_report
+    return func()
+  File "/home/sjkim/arcle_env/lib/python3.10/site-packages/hydra/_internal/utils.py", line 458, in <lambda>
+    lambda: hydra.run(
+  File "/home/sjkim/arcle_env/lib/python3.10/site-packages/hydra/_internal/hydra.py", line 119, in run
+    ret = run_job(
+  File "/home/sjkim/arcle_env/lib/python3.10/site-packages/hydra/core/utils.py", line 186, in run_job
+    ret.return_value = task_function(task_cfg)
+  File "/home/sjkim/ICLR2023/train.py", line 208, in run
+    loss = policy_loss_on_batch(
+  File "/home/sjkim/ICLR2023/losses.py", line 29, in policy_loss_on_batch
+    action_distribution = D.Normal(action_mu, action_sigma)
+  File "/home/sjkim/arcle_env/lib/python3.10/site-packages/torch/distributions/normal.py", line 51, in __init__
+    self.loc, self.scale = broadcast_all(loc, scale)
+  File "/home/sjkim/arcle_env/lib/python3.10/site-packages/torch/distributions/utils.py", line 13, in broadcast_all
+    def broadcast_all(*values):
+KeyboardInterrupt

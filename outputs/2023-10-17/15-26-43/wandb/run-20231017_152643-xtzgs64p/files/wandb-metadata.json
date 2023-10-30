@@ -1,0 +1,128 @@
+{
+    "os": "Linux-5.15.90.1-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "heartbeatAt": "2023-10-17T06:26:45.294892",
+    "startedAt": "2023-10-17T06:26:43.848432",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/home/sjkim/ICLR2023/train.py",
+    "codePathLocal": "train.py",
+    "codePath": "train.py",
+    "git": {
+        "remote": "https://github.com/GIST-DSLab/ICLR2023.git",
+        "commit": "b5a333bdc7f59822d722cb62ed594d20940b0f4f"
+    },
+    "email": "ksj614@kaist.ac.kr",
+    "root": "/home/sjkim/ICLR2023",
+    "host": "SEJIN-KIM",
+    "username": "sjkim",
+    "executable": "/home/sjkim/arcle_env/bin/python",
+    "cpu_count": 8,
+    "cpu_count_logical": 16,
+    "cpu_freq": {
+        "current": 4491.466999999999,
+        "min": 0.0,
+        "max": 0.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 4491.467,
+            "min": 0.0,
+            "max": 0.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 1006.853931427002,
+            "used": 151.1405906677246
+        }
+    },
+    "gpu": "NVIDIA GeForce RTX 3060",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 3060",
+            "memory_total": 12884901888
+        }
+    ],
+    "memory": {
+        "total": 30.926044464111328
+    }
+}

@@ -16,9 +16,11 @@ from envs import ArcEnv
 import numpy as np
 import dill
 import os
+import wandb
 
 LOG = logging.getLogger(__name__)
 PATH = os.path.dirname(os.path.abspath(__file__))
+wandb.login()
 
 def rollout_policy(policy: MLP, env, render: bool = False) -> List[Experience]:
     trajectory = []
@@ -152,12 +154,19 @@ def get_opts_and_lrs(args, policy, vf):
     return policy_opt, vf_opt, policy_lrs, vf_lrs
 
 
+def train():
+    pass
+
+
 @hydra.main(config_path="config", config_name="config.yaml")
 def run(args):
+    wandb.init(project='macaw-min', config=dict(args))
+    
     with open(f"{PATH}/{args.task_config}", "r") as f:
         task_config = json.load(
             f, object_hook=lambda d: namedtuple("X", d.keys())(*d.values())
         )
+    
     env = get_env(args, task_config)
 
     policy, vf, train_task_buffers, test_task_buffers = build_networks_and_buffers(args, env, task_config)
@@ -185,8 +194,9 @@ def run(args):
                 loss = vf_loss_on_batch(f_vf, inner_batch, inner=True)
                 diff_value_opt.step(loss)
 
+                s, e = map(int, task_config.train_tasks)
                 meta_vf_loss = vf_loss_on_batch(f_vf, outer_batch)
-                total_vf_loss = meta_vf_loss / len(task_config.train_tasks)
+                total_vf_loss = meta_vf_loss / (e - s)
                 total_vf_loss.backward()
 
             # Adapt policy using adapted value function
@@ -208,12 +218,8 @@ def run(args):
                     f_policy, adapted_vf, outer_batch, args.advantage_head_coef
                 )
 
-                (meta_policy_loss / len(task_config.train_tasks)).backward()
-
-                # Sample adapted policy trajectory
-                # if train_step_idx % args.rollout_interval == 0:
-                #     adapted_trajectory, adapted_reward, success = rollout_policy(f_policy, env)
-                #     LOG.info(f"Task {train_task_idx} reward: {adapted_reward}")
+                s, e = map(int, task_config.train_tasks)
+                (meta_policy_loss / (e - s)).backward()
 
         # Update the policy/value function
         policy_opt.step()
@@ -221,19 +227,22 @@ def run(args):
         vf_opt.step()
         vf_opt.zero_grad()
 
+        sum_adapted_reward = 0
         if train_step_idx % args.rollout_interval == 0:
             for test_task_idx, task_buffers in test_task_buffers:
                 env.set_task_idx(test_task_idx)
                 adapted_trajectory, adapted_reward, success = rollout_policy(policy, env, True)
                 LOG.info(f"Task {test_task_idx} reward: {adapted_reward}")
+                sum_adapted_reward += adapted_reward
+        wandb.log({"sum_adapted_reward": sum_adapted_reward})
             
             
         if train_step_idx % args.model_save_interval == 0:
             train_s, train_e = train_task_buffers[0][0], train_task_buffers[-1][0] + 1
             test_s, test_e = test_task_buffers[0][0], test_task_buffers[-1][0] + 1
 
-            torch.save(policy, f"{PATH}/{task_config.model_path}/policy_steps_{train_step_idx}_train_{train_s}_{train_e}_test_{test_s}_{test_e}.pt", pickle_module=dill)
-            torch.save(vf, f"{PATH}/{task_config.model_path}/vf_steps_{train_step_idx}_train_{train_s}_{train_e}_test_{test_s}_{test_e}.pt", pickle_module=dill)
+            torch.save(policy, f"{PATH}/{task_config.model_paths}/policy_steps_{train_step_idx}_train_{train_s}_{train_e}_test_{test_s}_{test_e}.pt", pickle_module=dill)
+            torch.save(vf, f"{PATH}/{task_config.model_paths}/vf_steps_{train_step_idx}_train_{train_s}_{train_e}_test_{test_s}_{test_e}.pt", pickle_module=dill)
 
 if __name__ == "__main__":
     run()

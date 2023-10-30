@@ -9,8 +9,10 @@ class ArcEnv(gym.Env):
         self.include_goal = include_goal
         super(ArcEnv, self).__init__()
         self.arcloader = ARCLoader()
+        self.arcloader_eval = ARCLoader(train=False)
         self.miniarcloader = MiniARCLoader()
         self.arcenv = gym.make('ARCLE/O2ARCv2Env-v0', render_mode=None, data_loader=self.arcloader, max_grid_size=(30,30), colors=10, max_episode_steps=None)
+        self.arcenv_eval = gym.make('ARCLE/O2ARCv2Env-v0', render_mode=None, data_loader=self.arcloader_eval, max_grid_size=(30,30), colors=10, max_episode_steps=None)
         self.miniarcenv = gym.make('ARCLE/O2ARCv2Env-v0', render_mode=None, data_loader=self.miniarcloader, max_grid_size=(30,30), colors=10, max_episode_steps=None)
         self.env = self.arcenv
         self.traces = traces
@@ -37,6 +39,10 @@ class ArcEnv(gym.Env):
             if aa[4]['id'] == name:
                 self.env = self.arcenv
                 return i
+        for i, aa in enumerate(self.arcloader_eval.data):
+            if aa[4]['id'] == name:
+                self.env = self.arcenv_eval
+                return i
         for i, aa in enumerate(self.miniarcloader.data):
             if aa[4]['id'] == name:
                 self.env = self.miniarcenv
@@ -51,3 +57,7 @@ class ArcEnv(gym.Env):
         self.idx = idx
         self.findbyname(self.traces_info[self.idx][0])
         self.set_task(self.traces[self.idx])
+
+    def set_task_test(self, task_name):
+        state = self.env.reset(options= {'adaptation':False, 'prob_index':self.findbyname(task_name), 'subprob_index': 0})
+    
