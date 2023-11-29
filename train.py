@@ -37,24 +37,24 @@ def rollout_policy(policy: MLP, env, render: bool = False) -> List[Experience]:
     current_device = list(policy.parameters())[-1].device
     while not done:
         with torch.no_grad():
+            # some state is like ({'selected':array(x, y), 'grid':array(x, y), 'grid_dim':(x, y), 'clip':array(x, y), 'clip_dim':(x, y), ...}, {'steps': x, ...})
             if len(state) == 2:
-                # state = ({'selected':array(x, y), 'grid':array(x, y), 'grid_dim':(x, y), 'clip':array(x, y), 'clip_dim':(x, y)}, {'steps': x})
                 state = state[0]
 
-            import pdb; pdb.set_trace()
-            action = policy(torch.tensor(state['grid'].reshape(1, -1)).to(current_device).float()).squeeze()
-            np_action = action.squeeze().cpu().numpy()
-            # print(np_action)
+            np_action = policy(torch.tensor(state['grid'].reshape(1, -1)).to(current_device).float()).squeeze().cpu().numpy()
+            action = dict()
             try:
-                np_action_num = int(np.interp(np_action[0], (-1, 1), (1, 34)))
-                np_action_bbox = int(np.interp(np_action[1:], (-1, 1), (0, 30)))
-                print("!!!!!!!!!!!!!!!!!, np_action")
+                action['operation'] = int(np.interp(np_action[0], (-1, 1), (1, 34)))
+                
+                x0, y0, h, w = int(np.interp(np_action[1:], (-1, 1), (0, 30)))
+                action['selection'] = np.zeros((30,30), dtype=np.bool_)
+                action['selection'][x0:min(30, x0+h), y0:min(30, y0+w)] = True
             except:
-                np_action = 1
+                action['operation'] = 1
 
-        action = dict()
-        action['operation'] = np_action
-        action['selection'] = np.zeros((30,30), dtype=np.bool_)
+                x0, y0, h, w = (0, 0, 30, 30)
+                action['selection'] = np.zeros((30,30), dtype=np.bool_)
+                action['selection'][x0:min(30, x0+h), y0:min(30, y0+w)] = True
 
         next_state, reward, done, _, info_dict = env.env.step(action)
 
@@ -225,10 +225,13 @@ def train():
                 (meta_policy_loss / (e - s)).backward()
 
         # Update the policy/value function
-        policy_opt.step()
+        max_norm = 5
         policy_opt.zero_grad()
-        vf_opt.step()
+        torch.nn.utils.clip_grad_norm_(policy_opt.parameters(), max_norm)
+        policy_opt.step()
         vf_opt.zero_grad()
+        torch.nn.utils.clip_grad_norm_(vf_opt.parameters(), max_norm)
+        vf_opt.step()
 
         sum_adapted_reward = 0
         if train_step_idx % args.rollout_interval == 0:
