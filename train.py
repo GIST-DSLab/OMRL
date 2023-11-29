@@ -227,10 +227,10 @@ def train():
         # Update the policy/value function
         max_norm = 5
         policy_opt.zero_grad()
-        torch.nn.utils.clip_grad_norm_(policy_opt.parameters(), max_norm)
+        torch.nn.utils.clip_grad_norm_(policy.parameters(), max_norm)
         policy_opt.step()
         vf_opt.zero_grad()
-        torch.nn.utils.clip_grad_norm_(vf_opt.parameters(), max_norm)
+        torch.nn.utils.clip_grad_norm_(vf.parameters(), max_norm)
         vf_opt.step()
 
         sum_adapted_reward = 0
