@@ -28,6 +28,9 @@ class WLinear(nn.Module):
         theta = self.fc(self.z)
         w = theta[: self.w_idx].view(x.shape[-1], -1)
         b = theta[self.w_idx :]
+
+        ret = x @ w + b
+        import pdb; pdb.set_trace()
         return x @ w + b
 
 
@@ -51,11 +54,12 @@ class MLP(nn.Module):
         self.seq = nn.Sequential()
         self._head = extra_head_layers is not None
 
-        if not w_linear:
-            linear = BiasLinear if bias_linear else nn.Linear
-        else:
-            linear = WLinear
-        self.bias_linear = bias_linear
+        # if not w_linear:
+        #     linear = BiasLinear if bias_linear else nn.Linear
+        # else:
+        #     linear = WLinear
+        # self.bias_linear = bias_linear
+        linear = WLinear
         self.aparams = []
 
         for idx in range(len(layer_widths) - 1):
@@ -80,10 +84,18 @@ class MLP(nn.Module):
                 w = linear(extra_head_layers[idx], extra_head_layers[idx + 1])
                 self.head_seq.add_module(f"fc_{idx}", w)
 
+        # import pdb; pdb.set_trace()
+
+
     def forward(self, x: torch.tensor, acts: Optional[torch.tensor] = None):
         if self._head and acts is not None:
             h = self.pre_seq(x)
+            # print("!!!FORWARD!!!")
+            # print("H:", h.shape, h)
+            # print("ACTS:", acts.shape, acts)
             head_input = torch.cat((h, acts), -1)
+            # print("Head Input:", head_input.shape)
+            # print("Head Seq:", self.head_seq(head_input))
             return self._final_activation(self.post_seq(h)), self.head_seq(head_input)
         else:
             return self._final_activation(self.seq(x))

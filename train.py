@@ -36,14 +36,17 @@ def rollout_policy(policy: MLP, env, render: bool = False) -> List[Experience]:
     current_device = list(policy.parameters())[-1].device
     while not done:
         with torch.no_grad():
-            if len(state) == 2:
-                action = policy(torch.tensor(state[0]['selected'].reshape(1, -1)).to(current_device).float()).squeeze()
-            else:
-                action = policy(torch.tensor(state['selected'].reshape(1, -1)).to(current_device).float()).squeeze()
+            if len(state) == 2 and len(state[0]) == 5:
+                # state = ({'selected':array(x, y), 'grid':array(x, y), 'grid_dim':(x, y), 'clip':array(x, y), 'clip_dim':(x, y)}, {'steps': x})
+                state = state[0]
+
+            action = policy(torch.tensor(state['grid'].reshape(1, -1)).to(current_device).float()).squeeze()
             np_action = action.squeeze().cpu().numpy()
+            # import pdb; pdb.set_trace()
             # print(np_action)
             try:
                 np_action = int(np.interp(np_action, (-1, 1), (1, 34)))
+                print("!!!!!!!!!!!!!!!!!, np_action")
             except:
                 np_action = 1
 
@@ -70,7 +73,7 @@ def rollout_policy(policy: MLP, env, render: bool = False) -> List[Experience]:
 
 def build_networks_and_buffers(args, env, task_config):
     obs_dim = 900
-    action_dim = 1
+    action_dim = 5
 
     policy_head = [32, 1] if args.advantage_head_coef is not None else None
     policy = MLP(
