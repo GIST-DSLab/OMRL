@@ -4,7 +4,6 @@ import numpy as np
 from typing import List
 from collections import defaultdict
 from envs import ArcEnv
-import hydra
 import json
 from collections import namedtuple
 import os
@@ -40,7 +39,7 @@ def create_features():
         prob_index = env.findbyname(name)
         obs_init, _ = env.env.reset(options={'adaptation':False, 'prob_index': prob_index, 'subprob_index': subtask})
         obs_answer = np.zeros(shape=(30, 30))
-        obs_answer[:env.env.answer.shape[0], :env.env.answer.shape[1]] = env.env.answer
+        obs_answer[:env.env.unwrapped.answer.shape[0], :env.env.unwrapped.answer.shape[1]] = env.env.unwrapped.answer
         task_dict[f"{name}_{subtask}"].append((idx, obs_init, obs_answer))
 
     discount_factor = 0.99
@@ -63,21 +62,7 @@ def create_features():
 
         cnt = 0
         for id, obs_init, obs_answer in zip(id_list, obs_init_list, obs_answer_list):
-            # input image 
             obs_first = obs_init['input']
-            # obs_init_list[cnt]['input']으로 대체
-            # obs_first = np.zeros(shape=(30, 30))
-            # for x in range(obs_init['grid_dim'][0]):
-            #     for y in range(obs_init['grid_dim'][1]):
-            #         obs_first[x][y] = obs_init['grid'][x][y]
-
-            # obs_answer로 대체
-            # output image: obs_terminal이 그냥 현재 trace의 마지막 state로 되어있음(정답이 아닐 수 있음)
-            # obs_terminal = np.zeros(shape=(30, 30))
-            # for x in range(traces[id][-1][-1].shape[0]):
-            #     for y in range(traces[id][-1][-1].shape[1]):
-            #         obs_terminal[x][y] = traces[id][-1][-1][x][y]
-
             obs_after = obs_answer.copy()
             for i in range(len(traces[id]) - 2, -1, -1): # skip commit actions
                 if i == 0:
@@ -101,8 +86,6 @@ def create_features():
                     if not isTerminal:
                         break
                 
-                # import pdb; pdb.set_trace()
-
                 if isTerminal:
                     terminals[cnt] = True
                     rewards[cnt] = 1 # sparse rewards 
