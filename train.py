@@ -1,6 +1,7 @@
 from nn import MLP
 from utils import ReplayBuffer
-import hydra
+import yaml
+from omegaconf import OmegaConf
 import json
 from collections import namedtuple
 import pickle
@@ -158,13 +159,11 @@ def get_opts_and_lrs(args, policy, vf):
 
 
 def train():
-    pass
+    with open(f"{PATH}/config/config.yaml", "r") as y:
+        args = OmegaConf.create(yaml.load(y, Loader=yaml.FullLoader))
 
-
-@hydra.main(config_path="config", config_name="config.yaml")
-def run(args):
     wandb.init(project='macaw-min', config=dict(args))
-    
+
     with open(f"{PATH}/{args.task_config}", "r") as f:
         task_config = json.load(
             f, object_hook=lambda d: namedtuple("X", d.keys())(*d.values())
@@ -248,4 +247,4 @@ def run(args):
             torch.save(vf, f"{PATH}/{task_config.model_paths}/vf_steps_{train_step_idx}_train_{train_s}_{train_e}_test_{test_s}_{test_e}.pt", pickle_module=dill)
 
 if __name__ == "__main__":
-    run()
+    train()

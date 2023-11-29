@@ -53,6 +53,7 @@ def create_features():
         next_obs = np.zeros(shape=(cnt, 30, 30))
         terminal_obs = np.zeros(shape=(cnt, 30, 30))
         terminals = np.zeros(shape=(cnt, 1), dtype=bool)
+        actions = np.zeros(shape=(cnt, 5))
         actions_num = np.zeros(shape=(cnt, 1))
         actions_bbox = np.zeros(shape=(cnt, 4))
         # actions_clip = np.zeros(shape=(cnt, 4))
@@ -74,19 +75,11 @@ def create_features():
                 obs[cnt] = obs_before.copy()
                 next_obs[cnt] = obs_after.copy()
                 terminal_obs[cnt] = obs_answer.copy()
-                actions_num[cnt], bbox =  env.covert_action_info(traces[id][i])
+                actions_num[cnt], bbox = env.covert_action_info(traces[id][i])
                 actions_bbox[cnt] = np.array(bbox).reshape(4)
+                actions[cnt] = np.concatenate([actions_num[cnt], actions_bbox[cnt]], 0)
 
-                isTerminal = True
-                for x in range(30):
-                    for y in range(30):
-                        if obs[cnt][x][y] != obs_answer[x][y]:
-                            isTerminal = False
-                            break
-                    if not isTerminal:
-                        break
-                
-                if isTerminal:
+                if (obs[cnt] == obs_answer).all():
                     terminals[cnt] = True
                     rewards[cnt] = 1 # sparse rewards 
                     mc_rewards[cnt] = rewards[cnt]
@@ -109,8 +102,7 @@ def create_features():
             f.create_dataset('next_obs', data=next_obs.reshape(cnt, 900), maxshape = (cnt, 900))
             f.create_dataset('terminal_obs', data=terminal_obs.reshape(cnt, 900), maxshape = (cnt, 900))
             f.create_dataset('terminals', data=terminals, maxshape = (cnt, 1))
-            f.create_dataset('actions', data=actions_num, maxshape = (cnt, 1))
-            f.create_dataset('actions_bbox', data=actions_bbox, maxshape = (cnt, 4))
+            f.create_dataset('actions', data=actions_num, maxshape = (cnt, 5))
             f.create_dataset('rewards', data=rewards, maxshape = (cnt, 1))
             f.create_dataset('mc_rewards', data=mc_rewards, maxshape = (cnt, 1))
             f.create_dataset('discount_factor', data=discount_factor, maxshape = ())
