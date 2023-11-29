@@ -8,15 +8,19 @@ import hydra
 import json
 from collections import namedtuple
 import os
+import yaml
+from omegaconf import OmegaConf
 
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 
-@hydra.main(config_path="config", config_name="config.yaml")
-def create_features(args):
+def create_features():
 
     traces = []
     traces_info = []
+
+    with open(f"{PATH}/config/config.yaml", "r") as y:
+        args = OmegaConf.create(yaml.load(y, Loader=yaml.FullLoader))
 
     with open(f"{PATH}/{args.task_config}", "r") as f:
         task_config = json.load(
@@ -32,16 +36,12 @@ def create_features(args):
 
     task_dict = defaultdict(list)
     for idx, (trace, info) in enumerate(zip(traces, traces_info)):
-        print(idx)
         name, subtask, isGoal = info
         prob_index = env.findbyname(name)
         obs_init, _ = env.env.reset(options={'adaptation':False, 'prob_index': prob_index, 'subprob_index': subtask})
         obs_answer = np.zeros(shape=(30, 30))
-        for x in range(env.env.answer.shape[0]):
-            for y in range(env.env.answer.shape[1]):
-                obs_answer = env.env.answer[x][y]
+        obs_answer[:env.env.answer.shape[0], :env.env.answer.shape[1]] = env.env.answer
         task_dict[f"{name}_{subtask}"].append((idx, obs_init, obs_answer))
-
 
     discount_factor = 0.99
     file_no = 0
@@ -52,8 +52,8 @@ def create_features(args):
         cnt = sum([len(traces[id]) - 1 for id in id_list])
         obs = np.zeros(shape=(cnt, 30, 30))
         next_obs = np.zeros(shape=(cnt, 30, 30))
-        terminal_obs = np.zeros(shape=(cnt, 1), dtype=bool)
-        terminals = np.zeros(shape=(cnt, 30, 30))
+        terminal_obs = np.zeros(shape=(cnt, 30, 30))
+        terminals = np.zeros(shape=(cnt, 1), dtype=bool)
         actions_num = np.zeros(shape=(cnt, 1))
         actions_bbox = np.zeros(shape=(cnt, 4))
         # actions_clip = np.zeros(shape=(cnt, 4))
@@ -64,10 +64,12 @@ def create_features(args):
         cnt = 0
         for id, obs_init, obs_answer in zip(id_list, obs_init_list, obs_answer_list):
             # input image 
-            obs_first = np.zeros(shape=(30, 30))
-            for x in range(obs_init['grid_dim'][0]):
-                for y in range(obs_init['grid_dim'][1]):
-                    obs_first[x][y] = obs_init['grid'][x][y]
+            obs_first = obs_init['input']
+            # obs_init_list[cnt]['input']으로 대체
+            # obs_first = np.zeros(shape=(30, 30))
+            # for x in range(obs_init['grid_dim'][0]):
+            #     for y in range(obs_init['grid_dim'][1]):
+            #         obs_first[x][y] = obs_init['grid'][x][y]
 
             # obs_answer로 대체
             # output image: obs_terminal이 그냥 현재 trace의 마지막 state로 되어있음(정답이 아닐 수 있음)
@@ -75,25 +77,20 @@ def create_features(args):
             # for x in range(traces[id][-1][-1].shape[0]):
             #     for y in range(traces[id][-1][-1].shape[1]):
             #         obs_terminal[x][y] = traces[id][-1][-1][x][y]
-            
-            obs_after = obs_answer.copy()
-            # obs_after = traces[id][-2][-1].copy()
-            print("!!!!", obs_after.shape)
 
+            obs_after = obs_answer.copy()
             for i in range(len(traces[id]) - 2, -1, -1): # skip commit actions
                 if i == 0:
                     obs_before = obs_first.copy()
                 else:
                     obs_before = np.zeros(shape=(30, 30))
-                    for x in range(traces[id][i-1][-1].shape[0]):
-                        for y in range(traces[id][i-1][-1].shape[1]):
-                            obs_before[x][y] = traces[id][i-1][-1][x][y]
+                    obs_before[:traces[id][i-1][-1].shape[0], :traces[id][i-1][-1].shape[1]] = traces[id][i-1][-1]
 
                 obs[cnt] = obs_before.copy()
                 next_obs[cnt] = obs_after.copy()
                 terminal_obs[cnt] = obs_answer.copy()
-                actions_num[cnt], actions_bbox[cnt] =  env.covert_action_info(traces[id][i])
-                import pdb; pdb.set_trace()
+                actions_num[cnt], bbox =  env.covert_action_info(traces[id][i])
+                actions_bbox[cnt] = np.array(bbox).reshape(4)
 
                 isTerminal = True
                 for x in range(30):
@@ -103,6 +100,8 @@ def create_features(args):
                             break
                     if not isTerminal:
                         break
+                
+                # import pdb; pdb.set_trace()
 
                 if isTerminal:
                     terminals[cnt] = True
@@ -127,8 +126,8 @@ def create_features(args):
             f.create_dataset('next_obs', data=next_obs.reshape(cnt, 900), maxshape = (cnt, 900))
             f.create_dataset('terminal_obs', data=terminal_obs.reshape(cnt, 900), maxshape = (cnt, 900))
             f.create_dataset('terminals', data=terminals, maxshape = (cnt, 1))
-            f.create_dataset('actions', data=actions, maxshape = (cnt, 1))
-            
+            f.create_dataset('actions', data=actions_num, maxshape = (cnt, 1))
+            f.create_dataset('actions_bbox', data=actions_bbox, maxshape = (cnt, 4))
             f.create_dataset('rewards', data=rewards, maxshape = (cnt, 1))
             f.create_dataset('mc_rewards', data=mc_rewards, maxshape = (cnt, 1))
             f.create_dataset('discount_factor', data=discount_factor, maxshape = ())
