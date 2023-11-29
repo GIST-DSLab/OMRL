@@ -76,8 +76,10 @@ def create_features():
                 next_obs[cnt] = obs_after.copy()
                 terminal_obs[cnt] = obs_answer.copy()
                 actions_num[cnt], bbox = env.covert_action_info(traces[id][i])
-                actions_bbox[cnt] = np.array(bbox).reshape(4)
-                actions[cnt] = np.concatenate([actions_num[cnt], actions_bbox[cnt]], 0)
+                actions_bbox[cnt] = np.array(bbox).reshape(4) # (x0, y0, x1, y1)
+                actions_bbox[cnt][2] -= actions_bbox[cnt][0]
+                actions_bbox[cnt][3] -= actions_bbox[cnt][1]  # (x0, y0, h, w)
+                actions[cnt] = np.concatenate([actions_num[cnt], actions_bbox[cnt]], 0) # (action_num, x0, y0, h, w)
 
                 if (obs[cnt] == obs_answer).all():
                     terminals[cnt] = True
@@ -102,7 +104,7 @@ def create_features():
             f.create_dataset('next_obs', data=next_obs.reshape(cnt, 900), maxshape = (cnt, 900))
             f.create_dataset('terminal_obs', data=terminal_obs.reshape(cnt, 900), maxshape = (cnt, 900))
             f.create_dataset('terminals', data=terminals, maxshape = (cnt, 1))
-            f.create_dataset('actions', data=actions_num, maxshape = (cnt, 5))
+            f.create_dataset('actions', data=actions, maxshape = (cnt, 5))
             f.create_dataset('rewards', data=rewards, maxshape = (cnt, 1))
             f.create_dataset('mc_rewards', data=mc_rewards, maxshape = (cnt, 1))
             f.create_dataset('discount_factor', data=discount_factor, maxshape = ())

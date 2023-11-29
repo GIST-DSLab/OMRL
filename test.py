@@ -1,13 +1,9 @@
- import pickle
-import dill
 import torch
 import torch.optim as O
 import higher
-from itertools import count
 from train import get_env, get_opts_and_lrs, rollout_policy
 from losses import policy_loss_on_batch, vf_loss_on_batch
 import json
-import logging
 from collections import namedtuple
 import os
 import glob
@@ -16,7 +12,6 @@ import yaml
 from omegaconf import OmegaConf
 import wandb
 
-# LOG = logging.getLogger(__name__)
 PATH = os.path.dirname(os.path.abspath(__file__))
 wandb.login()
 

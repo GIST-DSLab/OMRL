@@ -37,16 +37,17 @@ def rollout_policy(policy: MLP, env, render: bool = False) -> List[Experience]:
     current_device = list(policy.parameters())[-1].device
     while not done:
         with torch.no_grad():
-            if len(state) == 2 and len(state[0]) == 5:
+            if len(state) == 2:
                 # state = ({'selected':array(x, y), 'grid':array(x, y), 'grid_dim':(x, y), 'clip':array(x, y), 'clip_dim':(x, y)}, {'steps': x})
                 state = state[0]
 
+            import pdb; pdb.set_trace()
             action = policy(torch.tensor(state['grid'].reshape(1, -1)).to(current_device).float()).squeeze()
             np_action = action.squeeze().cpu().numpy()
-            # import pdb; pdb.set_trace()
             # print(np_action)
             try:
-                np_action = int(np.interp(np_action, (-1, 1), (1, 34)))
+                np_action_num = int(np.interp(np_action[0], (-1, 1), (1, 34)))
+                np_action_bbox = int(np.interp(np_action[1:], (-1, 1), (0, 30)))
                 print("!!!!!!!!!!!!!!!!!, np_action")
             except:
                 np_action = 1

@@ -30,7 +30,7 @@ class WLinear(nn.Module):
         b = theta[self.w_idx :]
 
         ret = x @ w + b
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         return x @ w + b
 
 
