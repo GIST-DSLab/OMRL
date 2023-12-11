@@ -38,7 +38,7 @@ def create_features():
         name, subtask, isGoal = info
         prob_index = env.findbyname(name)
         obs_init, _ = env.env.reset(options={'adaptation':False, 'prob_index': prob_index, 'subprob_index': subtask})
-        obs_answer = np.zeros(shape=(30, 30))
+        obs_answer = np.full(shape=(30, 30), fill_value=-1)
         obs_answer[:env.env.unwrapped.answer.shape[0], :env.env.unwrapped.answer.shape[1]] = env.env.unwrapped.answer
         task_dict[f"{name}_{subtask}"].append((idx, obs_init, obs_answer))
 
@@ -49,9 +49,9 @@ def create_features():
         task_no, subtask_no = task.split('_')
 
         cnt = sum([len(traces[id]) - 1 for id in id_list])
-        obs = np.zeros(shape=(cnt, 30, 30))
-        next_obs = np.zeros(shape=(cnt, 30, 30))
-        terminal_obs = np.zeros(shape=(cnt, 30, 30))
+        obs = np.full(shape=(cnt, 30, 30), fill_value=-1)
+        next_obs = np.full(shape=(cnt, 30, 30), fill_value=-1)
+        terminal_obs = np.full(shape=(cnt, 30, 30), fill_value=-1)
         terminals = np.zeros(shape=(cnt, 1), dtype=bool)
         actions = np.zeros(shape=(cnt, 5))
         actions_num = np.zeros(shape=(cnt, 1))
@@ -63,14 +63,16 @@ def create_features():
 
         cnt = 0
         for id, obs_init, obs_answer in zip(id_list, obs_init_list, obs_answer_list):
-            obs_first = obs_init['input']
+            obs_first = np.full(shape=(30, 30), fill_value=-1)
+            obs_first[:obs_init['input_dim'][0], :obs_init['input_dim'][1]] = obs_init['input'][:obs_init['input_dim'][0], :obs_init['input_dim'][1]]
             obs_after = obs_answer.copy()
             for i in range(len(traces[id]) - 2, -1, -1): # skip commit actions
                 if i == 0:
                     obs_before = obs_first.copy()
                 else:
-                    obs_before = np.zeros(shape=(30, 30))
+                    obs_before = np.full(shape=(30, 30), fill_value=-1)
                     obs_before[:traces[id][i-1][-1].shape[0], :traces[id][i-1][-1].shape[1]] = traces[id][i-1][-1]
+
 
                 obs[cnt] = obs_before.copy()
                 next_obs[cnt] = obs_after.copy()

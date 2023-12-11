@@ -10,7 +10,6 @@ import torch.optim as O
 from typing import List
 import higher
 from itertools import count
-import logging
 from utils import Experience
 from losses import policy_loss_on_batch, vf_loss_on_batch
 from envs import ArcEnv
@@ -19,7 +18,8 @@ import dill
 import os
 import wandb
 
-LOG = logging.getLogger(__name__)
+torch.autograd.set_detect_anomaly(True)
+
 PATH = os.path.dirname(os.path.abspath(__file__))
 wandb.login()
 
@@ -176,9 +176,6 @@ def train():
     policy_opt, vf_opt, policy_lrs, vf_lrs = get_opts_and_lrs(args, policy, vf)
 
     for train_step_idx in count(start=1):
-        if train_step_idx % args.rollout_interval == 0:
-            LOG.info(f"Train step {train_step_idx}")
-
         for train_task_idx, task_buffers in train_task_buffers:
             env.set_task_idx(train_task_idx)
 
@@ -218,11 +215,18 @@ def train():
 
                 diff_policy_opt.step(loss)
                 meta_policy_loss = policy_loss_on_batch(
-                    f_policy, adapted_vf, outer_batch, args.advantage_head_coef
+                    f_policy, 
+                    adapted_vf, 
+                    outer_batch, 
+                    args.advantage_head_coef,
+                    inner=False
                 )
 
                 s, e = map(int, task_config.train_tasks)
-                (meta_policy_loss / (e - s)).backward()
+                try:
+                    (meta_policy_loss / (e - s)).backward()
+                except:
+                    import pdb;pdb.set_trace()
 
         # Update the policy/value function
         max_norm = 5
@@ -233,14 +237,13 @@ def train():
         torch.nn.utils.clip_grad_norm_(vf.parameters(), max_norm)
         vf_opt.step()
 
-        sum_adapted_reward = 0
         if train_step_idx % args.rollout_interval == 0:
+            sum_adapted_reward = 0
             for test_task_idx, task_buffers in test_task_buffers:
                 env.set_task_idx(test_task_idx)
                 adapted_trajectory, adapted_reward, success = rollout_policy(policy, env, True)
-                LOG.info(f"Task {test_task_idx} reward: {adapted_reward}")
                 sum_adapted_reward += adapted_reward
-        wandb.log({"sum_adapted_reward": sum_adapted_reward})
+            wandb.log({"sum_adapted_reward": sum_adapted_reward}, step=train_step_idx)
             
             
         if train_step_idx % args.model_save_interval == 0:

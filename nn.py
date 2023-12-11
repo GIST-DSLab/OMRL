@@ -12,7 +12,7 @@ class WLinear(nn.Module):
         if bias_size is None:
             bias_size = out_features
 
-        dim = 100
+        dim = 1000
         self.z = nn.Parameter(torch.empty(dim).normal_(0, 1.0 / out_features))
         self.fc = nn.Linear(dim, in_features * out_features + out_features)
         self.seq = self.fc
@@ -96,6 +96,9 @@ class MLP(nn.Module):
             head_input = torch.cat((h, acts), -1)
             # print("Head Input:", head_input.shape)
             # print("Head Seq:", self.head_seq(head_input))
+            
+            if torch.isnan(self._final_activation(self.post_seq(h))[0][0]): 
+                import pdb; pdb.set_trace()
             return self._final_activation(self.post_seq(h)), self.head_seq(head_input)
         else:
             return self._final_activation(self.seq(x))
