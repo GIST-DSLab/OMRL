@@ -102,6 +102,7 @@ def create_features():
             pickle.dump(li, f, pickle.HIGHEST_PROTOCOL)
 
         with h5py.File(f"{PATH}/{task_config.train_buffer_paths.format(file_no)}", 'w') as f:
+            f.create_dataset('task_name', data=task_no, maxshape=())
             f.create_dataset('obs', data=obs.reshape(cnt, 900), maxshape = (cnt, 900))
             f.create_dataset('next_obs', data=next_obs.reshape(cnt, 900), maxshape = (cnt, 900))
             f.create_dataset('terminal_obs', data=terminal_obs.reshape(cnt, 900), maxshape = (cnt, 900))

@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import os
 import random
-
+import torch.backends.cudnn as cudnn
 
 class RunningEstimator(object):
     def __init__(self):
@@ -92,6 +92,7 @@ class ReplayBuffer(object):
         buf._terminal_obs[:d['obs'].shape[0]] = d['terminal_obs']
         buf._terminal_discounts[:d['obs'].shape[0]] = d['terminal_discounts']
         buf._next_obs[:d['obs'].shape[0]] = d['next_obs']
+        buf._task_name[:d['obs'].shape[0]] = d['task_name']
 
         buf._write_location = d['obs'].shape[0]
         buf._stored_steps = d['obs'].shape[0]
@@ -133,6 +134,7 @@ class ReplayBuffer(object):
                 self._terminal_obs = np.memmap(f'{path}/terminal_obs.array', mode='r', shape=(size, obs_dim), dtype=np.float32)
                 self._terminal_discounts = np.memmap(f'{path}/terminal_discounts.array', mode='r', shape=(size, 1), dtype=np.float32)
                 self._next_obs = np.memmap(f'{path}/next_obs.array', mode='r', shape=(size, obs_dim), dtype=np.float32)
+                self._task_name = np.memmap(f'{path}/task_name.array', mode='r', shape=(size, obs_dim), dtype=np.float32)
             else:
                 if not silent:
                     print(f'Creating replay buffer memmap at {path}')
@@ -145,6 +147,7 @@ class ReplayBuffer(object):
                 self._terminal_obs = np.memmap(f'{path}/terminal_obs.array', mode='w+', shape=(size, obs_dim), dtype=np.float32)
                 self._terminal_discounts = np.memmap(f'{path}/terminal_discounts.array', mode='w+', shape=(size, 1), dtype=np.float32)
                 self._next_obs = np.memmap(f'{path}/next_obs.array', mode='w+', shape=(size, obs_dim), dtype=np.float32)
+                self._task_name = np.memmap(f'{path}/task_name.array', mode='r', shape=(size, obs_dim), dtype=np.float32)
                 self._obs.fill(float('nan'))
                 self._actions.fill(float('nan'))
                 self._rewards.fill(float('nan'))
@@ -153,6 +156,7 @@ class ReplayBuffer(object):
                 self._terminal_obs.fill(float('nan'))
                 self._terminal_discounts.fill(float('nan'))
                 self._next_obs.fill(float('nan'))
+                self._task_name.fill(float('nan'))
         else:
             self._obs = np.full((size, obs_dim), float('nan'), dtype=np.float32)
             self._actions = np.full((size, action_dim), float('nan'), dtype=np.float32)
@@ -162,6 +166,7 @@ class ReplayBuffer(object):
             self._terminal_obs = np.full((size, obs_dim), float('nan'), dtype=np.float32)
             self._terminal_discounts = np.full((size, 1), float('nan'), dtype=np.float32)
             self._next_obs = np.full((size, obs_dim), float('nan'), dtype=np.float32)
+            self._task_name = np.full((size, 1), float('nan'), dtype=np.float32)
 
         self._size = size
         if load_from is None:
@@ -188,6 +193,7 @@ class ReplayBuffer(object):
                 chunk_size = n_seed# + int(skip > 1)
 
                 self._discount_factor = f['discount_factor'][()]
+                self._task_name = f['task_name'][()]
                 if mode == 'end':
                     h5slice = slice(-chunk_size, stored)
                 elif mode == 'middle':
@@ -234,6 +240,7 @@ class ReplayBuffer(object):
         f.create_dataset('terminal_obs', data=self._terminal_obs[:self._stored_steps], compression='lzf')
         f.create_dataset('terminal_discounts', data=self._terminal_discounts[:self._stored_steps], compression='lzf')
         f.create_dataset('next_obs', data=self._next_obs[:self._stored_steps], compression='lzf')
+        f.create_dataset('task_name', data=self._task_name)
         f.create_dataset('discount_factor', data=self._discount_factor)
         f.close()
     
@@ -290,6 +297,7 @@ class ReplayBuffer(object):
         dones = self._terminals[idxs]
         rewards = self._rewards[idxs]
         mc_rewards = self._mc_rewards[idxs]
+        task_name = self._task_name
         
         batch = np.concatenate((obs, actions, next_obs, terminal_obs, terminal_discounts, dones, rewards, mc_rewards), 1)
         if noise:
@@ -305,9 +313,10 @@ class ReplayBuffer(object):
             'terminal_discounts': terminal_discounts,
             'dones': dones,
             'rewards': rewards,
-            'mc_rewards': mc_rewards
+            'mc_rewards': mc_rewards,
+            'task_name': bytes.decode(task_name)
         }
-        batch_dict = {k: torch.tensor(v).to(device) for k,v in batch_dict.items()}
+        batch_dict = {k: torch.tensor(v).to(device) if k != 'task_name' else v for k,v in batch_dict.items()}
         
         if return_both:
             return batch, batch_dict
@@ -363,6 +372,15 @@ def test_new_buffer():
     buf.save('test_buf.h5')
     #buf2 = ReplayBuffer(size, state, action, load_from='test_buf.h5')
     import pdb; pdb.set_trace()
+
+def seed_fix(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    cudnn.benchmark = False
+    cudnn.deterministic = True
+    random.seed(seed)
     
 
 if __name__ == '__main__':

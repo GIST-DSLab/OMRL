@@ -1,4 +1,4 @@
-from nn import MLP
+from nn import MLP, LLM_MLP
 from utils import ReplayBuffer
 import yaml
 from omegaconf import OmegaConf
@@ -10,20 +10,23 @@ import torch.optim as O
 from typing import List
 import higher
 from itertools import count
-from utils import Experience
+from utils import Experience, seed_fix
 from losses import policy_loss_on_batch, vf_loss_on_batch
 from envs import ArcEnv
 import numpy as np
 import dill
 import os
 import wandb
+import pandas as pd
 
 torch.autograd.set_detect_anomaly(True)
-
+SEED = 777
+LLM_FLAG = True
 PATH = os.path.dirname(os.path.abspath(__file__))
+seed_fix(SEED)
 wandb.login()
 
-def rollout_policy(policy: MLP, env, render: bool = False) -> List[Experience]:
+def rollout_policy(policy: MLP, env, render: bool = False, llm_flag=False, llm_descript=None) -> List[Experience]:
     trajectory = []
     idx = env.get_idx()
     state = env.env.reset(options= {'adaptation':False, 'prob_index':env.findbyname(env.traces_info[idx][0]), 'subprob_index': env.traces_info[idx][1]})
@@ -41,7 +44,12 @@ def rollout_policy(policy: MLP, env, render: bool = False) -> List[Experience]:
             if len(state) == 2:
                 state = state[0]
 
-            np_action = policy(torch.tensor(state['grid'].reshape(1, -1)).to(current_device).float()).squeeze().cpu().numpy()
+            if llm_flag:
+                descript = llm_descript[llm_descript.task_name == env.traces_info[env.get_idx()][0]+'.json']['description_output'].values
+                np_action = policy(torch.tensor(state['grid'].reshape(1, -1)).to(current_device).float(), description=descript).squeeze().cpu().numpy() 
+            else:
+                np_action = policy(torch.tensor(state['grid'].reshape(1, -1)).to(current_device).float()).squeeze().cpu().numpy() 
+            
             action = dict()
             try:
                 action['operation'] = int(np.interp(np_action[0], (-1, 1), (1, 34)))
@@ -78,17 +86,29 @@ def build_networks_and_buffers(args, env, task_config):
     action_dim = 5
 
     policy_head = [32, 1] if args.advantage_head_coef is not None else None
-    policy = MLP(
-        [obs_dim] + [args.net_width] * args.net_depth + [action_dim],
-        final_activation=torch.tanh,
-        extra_head_layers=policy_head,
-        w_linear=args.weight_transform,
-    ).to(args.device)
 
-    vf = MLP(
-        [obs_dim] + [args.net_width] * args.net_depth + [1],
-        w_linear=args.weight_transform,
-    ).to(args.device)
+    if LLM_FLAG:
+        policy = LLM_MLP(
+            obs_dim=obs_dim, args=args, action_dim=action_dim, policy_head=policy_head, flag='policy'
+        ).to(args.device)
+
+        vf = MLP(
+            [obs_dim] + [args.net_width] * args.net_depth + [1],
+            w_linear=args.weight_transform,
+        ).to(args.device)
+
+    else:
+        policy = MLP(
+            [obs_dim] + [args.net_width] * args.net_depth + [action_dim],
+            final_activation=torch.tanh,
+            extra_head_layers=policy_head,
+            w_linear=args.weight_transform,
+        ).to(args.device)
+
+        vf = MLP(
+            [obs_dim] + [args.net_width] * args.net_depth + [1],
+            w_linear=args.weight_transform,
+        ).to(args.device)
 
     s, e = map(int, task_config.train_tasks)
     train_buffer_paths = [
@@ -174,10 +194,11 @@ def train():
 
     policy, vf, train_task_buffers, test_task_buffers = build_networks_and_buffers(args, env, task_config)
     policy_opt, vf_opt, policy_lrs, vf_lrs = get_opts_and_lrs(args, policy, vf)
+    description_output = pd.read_csv('./data/description_output.csv')
 
     for train_step_idx in count(start=1):
-        for train_task_idx, task_buffers in train_task_buffers:
-            env.set_task_idx(train_task_idx)
+        for train_task_idx, task_buffers in train_task_buffers: # 이 부분 박사님에게 물어보기(train_task_idx)
+            env.set_task_idx(train_task_idx) 
 
             inner_batch = task_buffers.sample(
                 args.inner_batch_size, return_dict=True, device=args.device
@@ -211,6 +232,8 @@ def train():
                     inner_batch,
                     args.advantage_head_coef,
                     inner=True,
+                    llm_flag=LLM_FLAG,
+                    llm_descript=description_output
                 )
 
                 diff_policy_opt.step(loss)
@@ -219,7 +242,9 @@ def train():
                     adapted_vf, 
                     outer_batch, 
                     args.advantage_head_coef,
-                    inner=False
+                    inner=False,
+                    llm_flag=LLM_FLAG,
+                    llm_descript=description_output
                 )
 
                 s, e = map(int, task_config.train_tasks)
@@ -241,7 +266,7 @@ def train():
             sum_adapted_reward = 0
             for test_task_idx, task_buffers in test_task_buffers:
                 env.set_task_idx(test_task_idx)
-                adapted_trajectory, adapted_reward, success = rollout_policy(policy, env, True)
+                adapted_trajectory, adapted_reward, success = rollout_policy(policy, env, True, llm_flag=LLM_FLAG, llm_descript=description_output)
                 sum_adapted_reward += adapted_reward
             wandb.log({"sum_adapted_reward": sum_adapted_reward}, step=train_step_idx)
             

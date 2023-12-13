@@ -3,3 +3,4 @@ outputs
 __pycache__
 ..git
 data/macaw_offline_data_bu
+*.zip

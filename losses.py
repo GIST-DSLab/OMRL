@@ -9,7 +9,7 @@ def vf_loss_on_batch(vf, batch, inner: bool = False):
     return (value_estimates - targets).pow(2).mean()
 
 
-def policy_loss_on_batch(policy, vf, batch, adv_coef: float, inner: bool = False):
+def policy_loss_on_batch(policy, vf, batch, adv_coef: float, inner: bool = False, llm_flag=False, llm_descript=None):
     with torch.no_grad():
         value_estimates = vf(batch["obs"])
         action_value_estimates = batch["mc_rewards"]
@@ -21,7 +21,11 @@ def policy_loss_on_batch(policy, vf, batch, adv_coef: float, inner: bool = False
         weights = normalized_advantages.clamp(max=3).exp()
 
     # original_action = batch["actions"]
-    action_mu, advantage_prediction = policy(batch["obs"], batch["actions"])
+    if llm_flag:
+        descript = llm_descript[llm_descript.task_name == batch['task_name']+'.json']['description_output'].values
+        action_mu, advantage_prediction = policy(batch["obs"], batch["actions"], descript)
+    else:
+        action_mu, advantage_prediction = policy(batch["obs"], batch["actions"])
     if torch.isnan(action_mu[0][0]):
         import pdb; pdb.set_trace()
         #action_mu = torch.empty_like(action_mu).fill_(0)
