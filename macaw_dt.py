@@ -9,7 +9,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 """
 
 """
-GPT model:
+DT model:
 - the initial stem consists of a combination of token encoding and a positional encoding
 - the meat of it is a uniform sequence of Transformer blocks
     - each Transformer is a sequential combination of a 1-hidden-layer MLP block and a self-attention block
@@ -32,24 +32,6 @@ class GELU(nn.Module):
     def forward(self, input):
         return F.gelu(input)
 
-class GPTConfig:
-    """ base GPT config, params common to all GPT versions """
-    embd_pdrop = 0.1
-    resid_pdrop = 0.1
-    attn_pdrop = 0.1
-
-    def __init__(self, vocab_size, block_size, **kwargs):
-        self.vocab_size = vocab_size
-        self.block_size = block_size
-        for k,v in kwargs.items():
-            setattr(self, k, v)
-
-# class GPT1Config(GPTConfig):
-#     """ GPT-1 like network roughly 125M params """
-#     n_layer = 12
-#     n_head = 12
-#     n_embd = 768
-
 class CausalSelfAttention(nn.Module):
     """
     A vanilla multi-head masked self-attention layer with a projection at the end.
@@ -70,8 +52,8 @@ class CausalSelfAttention(nn.Module):
         # output projection
         self.proj = nn.Linear(config.n_embd, config.n_embd)
         # causal mask to ensure that attention is only applied to the left in the input sequence
-        self.register_buffer("mask", torch.tril(torch.ones(config.block_size*7, config.block_size*7))
-                                     .view(1, 1, config.block_size*7, config.block_size*7))
+        self.register_buffer("mask", torch.tril(torch.ones(config.block_size*config.number_of_tokens, config.block_size*config.number_of_tokens))
+                                     .view(1, 1, config.block_size*config.number_of_tokens, config.block_size*config.number_of_tokens))
         # self.register_buffer("mask", torch.tril(torch.ones(config.block_size + 1, config.block_size + 1))
         #                              .view(1, 1, config.block_size + 1, config.block_size + 1))
         self.n_head = config.n_head
@@ -116,8 +98,8 @@ class Block(nn.Module):
         x = x + self.mlp(self.ln2(x))
         return x
 
-class GPT(nn.Module):
-    """  the full GPT language model, with a context size of block_size """
+class DT(nn.Module):
+    """  the full DT language model, with a context size of block_size """
 
     def __init__(self, config):
         super().__init__()
@@ -137,11 +119,14 @@ class GPT(nn.Module):
         self.ln_f = nn.LayerNorm(config.n_embd)
         # self.head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
 
-        # action_mu, loss head -> 더 복잡한 모델로 변경하여 사용!
-        self.action_mu_head = nn.Sequential(nn.Conv2d(in_channels=7, out_channels=1, kernel_size=1),
-                                            nn.Linear(config.n_embd, config.action_mu_dim), 
+        # loss, adv head -> 더 복잡한 모델로 변경하여 사용!
+        self.loss_head = nn.Sequential(nn.Conv2d(in_channels=config.number_of_tokens, out_channels=1, kernel_size=1),
+                                       nn.Linear(config.n_embd, config.loss_dim), 
+                                       nn.ReLU())
+        self.adv_head = nn.Sequential(nn.Conv2d(in_channels=config.number_of_tokens, out_channels=1, kernel_size=1),
+                                            nn.Linear(config.n_embd, config.adv_dim), 
                                             nn.ReLU())
-        self.loss_head = nn.Sequential(nn.Conv2d(in_channels=7, out_channels=1, kernel_size=1),
+        self.vf_head = nn.Sequential(nn.Conv2d(in_channels=1, out_channels=1, kernel_size=1),
                                        nn.Linear(config.n_embd, config.loss_dim), 
                                        nn.ReLU())
         
@@ -203,7 +188,7 @@ class GPT(nn.Module):
                     # weights of blacklist modules will NOT be weight decayed
                     no_decay.add(fpn)
 
-        # special case the position embedding parameter in the root GPT module as not decayed
+        # special case the position embedding parameter in the root DT module as not decayed
         no_decay.add('pos_emb')
         no_decay.add('global_pos_emb')
 
@@ -223,49 +208,94 @@ class GPT(nn.Module):
         optimizer = torch.optim.AdamW(optim_groups, lr=train_config.learning_rate, betas=train_config.betas)
         return optimizer
 
-    def forward(self, state_grid, state_mask, actions, x, y, h, w, timesteps=None):
+    def forward(self, obs, actions=None, timesteps=None):
         # state_grid: (batch, block_size, 900)
         # state_mask: (batch, block_size, 900)
-        # actions: (batch, block_size, 1)
-        # x: (batch, block_size, 1)
-        # y: (batch, block_size, 1)
-        # h: (batch, block_size, 1)
-        # w: (batch, block_size, 1)
+        # actions: (batch, block_size, 5)
         # timesteps: (batch, 1, 1)
-        
-        state_grid_embeddings = self.state_grid_encoder(state_grid.type(torch.float32).contiguous())
-        state_mask_embeddings = self.state_mask_encoder(state_mask.type(torch.float32).contiguous())
-        
-        
-        action_embeddings = self.action_embeddings(actions.type(torch.long).squeeze(-1))
-        x_embeddings = self.x_encoder(x.type(torch.float32))
-        y_embeddings = self.y_encoder(y.type(torch.float32))
-        h_embeddings = self.h_encoder(h.type(torch.float32))
-        w_embeddings = self.w_encoder(w.type(torch.float32))
-        
-        token_embeddings = torch.zeros((state_grid.shape[0], state_grid.shape[1]*7, self.config.n_embd), dtype=torch.float32, device=state_grid_embeddings.device)
-        token_embeddings[:,::7,:] = state_grid_embeddings
-        token_embeddings[:,1::7,:] = state_mask_embeddings
-        token_embeddings[:,2::7,:] = action_embeddings
-        token_embeddings[:,3::7,:] = x_embeddings
-        token_embeddings[:,4::7,:] = y_embeddings
-        token_embeddings[:,5::7,:] = h_embeddings
-        token_embeddings[:,6::7,:] = w_embeddings
 
-        batch_size = state_grid.shape[0]
-        all_global_pos_emb = torch.repeat_interleave(self.global_pos_emb, batch_size, dim=0) # batch_size, traj_length, n_embd
+        if actions == None:
+            if obs.ndim == 2:
+                obs = torch.unsqueeze(obs, dim = 1)
+            if timesteps == None:
+                timesteps = torch.zeros(size=(self.config.batch_size, 1, 1), dtype=torch.int64).to(obs.device)
+            elif timesteps.ndim == 2:
+                timesteps = torch.unsqueeze(timesteps, dim = 1)
+           
+            state_grid = obs[:,:,:900]
+            # state_mask = obs[:,:,900:]
 
-        position_embeddings = torch.gather(all_global_pos_emb, 1, torch.repeat_interleave(timesteps, self.config.n_embd, dim=-1)) + self.pos_emb[:, :token_embeddings.shape[1], :]
-        
-        x = self.drop(token_embeddings + torch.repeat_interleave(position_embeddings, 7, dim=1))
-        x = self.blocks(x)
-        x = self.ln_f(x)
-        x = x.view(batch_size, 7, -1, self.config.n_embd)
+            state_grid_embeddings = self.state_grid_encoder(state_grid.type(torch.float32).contiguous())
+            # state_mask_embeddings = self.state_mask_encoder(state_mask.type(torch.float32).contiguous())
 
-        logits_loss = self.loss_head(x)
-        logits_action_mu = self.action_mu_head(x)
-        
-        return logits_loss, logits_action_mu
+            self.config.number_of_tokens = 1
+            batch_size = state_grid.shape[0]
+            token_embeddings = torch.zeros((batch_size, state_grid.shape[1] * self.config.number_of_tokens, self.config.n_embd), dtype=torch.float32, device=state_grid_embeddings.device)
+            token_embeddings[:,::self.config.number_of_tokens,:] = state_grid_embeddings
+            #token_embeddings[:,1::self.config.number_of_tokens,:] = state_mask_embeddings
+
+            all_global_pos_emb = torch.repeat_interleave(self.global_pos_emb, batch_size, dim=0) # batch_size, traj_length, n_embd
+            position_embeddings = torch.gather(all_global_pos_emb, 1, torch.repeat_interleave(timesteps, self.config.n_embd, dim=-1)) + self.pos_emb[:, :token_embeddings.shape[1], :]
+            
+            x = self.drop(token_embeddings + torch.repeat_interleave(position_embeddings, self.config.number_of_tokens, dim=1))
+            x = self.blocks(x)
+            x = self.ln_f(x)
+            x = x.view(batch_size, self.config.number_of_tokens, -1, self.config.n_embd)
+
+            logits_loss = self.vf_head(x)
+            
+            return logits_loss
+
+        else:
+            if obs.ndim == 2:
+                obs = torch.unsqueeze(obs, dim = 1)
+            if actions.ndim == 2:
+                actions = torch.unsqueeze(actions, dim = 1)
+            if timesteps == None:
+                timesteps = torch.zeros(self.config.batch_size, 1, 1).to(obs.device)
+            elif timesteps.ndim == 2:
+                timesteps = torch.unsqueeze(timesteps, dim = 1)
+
+            state_grid = obs[:,:,:900]
+            # state_mask = obs[:,:,900:]
+
+            action_number = torch.unsqueeze(actions[:,:,0], dim = -1)
+            x = torch.unsqueeze(actions[:,:,1], dim = -1)
+            y = torch.unsqueeze(actions[:,:,2], dim = -1)
+            h = torch.unsqueeze(actions[:,:,3], dim = -1)
+            w = torch.unsqueeze(actions[:,:,4], dim = -1)
+
+            state_grid_embeddings = self.state_grid_encoder(state_grid.type(torch.float32).contiguous())
+            # state_mask_embeddings = self.state_mask_encoder(state_mask.type(torch.float32).contiguous())
+            
+            action_embeddings = self.action_embeddings(action_number.type(torch.long).squeeze(-1))
+            x_embeddings = self.x_encoder(x.type(torch.float32))
+            y_embeddings = self.y_encoder(y.type(torch.float32))
+            h_embeddings = self.h_encoder(h.type(torch.float32))
+            w_embeddings = self.w_encoder(w.type(torch.float32))
+
+            batch_size = state_grid.shape[0]
+            token_embeddings = torch.zeros((batch_size, state_grid.shape[1] * self.config.number_of_tokens, self.config.n_embd), dtype=torch.float32, device=state_grid_embeddings.device)
+            token_embeddings[:,::self.config.number_of_tokens,:] = state_grid_embeddings
+            #token_embeddings[:,1::self.config.number_of_tokens,:] = state_mask_embeddings
+            token_embeddings[:,1::self.config.number_of_tokens,:] = action_embeddings
+            token_embeddings[:,2::self.config.number_of_tokens,:] = x_embeddings
+            token_embeddings[:,3::self.config.number_of_tokens,:] = y_embeddings
+            token_embeddings[:,4::self.config.number_of_tokens,:] = h_embeddings
+            token_embeddings[:,5::self.config.number_of_tokens,:] = w_embeddings
+
+            all_global_pos_emb = torch.repeat_interleave(self.global_pos_emb, batch_size, dim=0) # batch_size, traj_length, n_embd
+            position_embeddings = torch.gather(all_global_pos_emb, 1, torch.repeat_interleave(timesteps, self.config.n_embd, dim=-1)) + self.pos_emb[:, :token_embeddings.shape[1], :]
+            
+            x = self.drop(token_embeddings + torch.repeat_interleave(position_embeddings, self.config.number_of_tokens, dim=1))
+            x = self.blocks(x)
+            x = self.ln_f(x)
+            x = x.view(batch_size, self.config.number_of_tokens, -1, self.config.n_embd)
+
+            logits_loss = self.loss_head(x)
+            logits_adv = self.adv_head(x)
+            
+            return logits_loss, logits_adv
 
 
 # Hyperparameters
@@ -280,6 +310,7 @@ class Config:
             print("CPU:", torch.get_num_threads())
         
         # Model
+        self.number_of_tokens = 6
         self.embd_pdrop = 0.1
         self.resid_pdrop = 0.1
         self.attn_pdrop = 0.1
@@ -289,12 +320,12 @@ class Config:
         self.n_embd = 768
         
         self.vocab_size = 34        # action 개수
-        self.block_size = 5         # trajectory 길이 (a, s, r 페어 개수)
+        self.block_size = 1         # trajectory 길이 (a, s, r 페어 개수)
         self.max_timestep = 25
         
         # Training
         self.max_epochs = 10
-        self.batch_size = 2
+        self.batch_size = 4
         self.learning_rate = 3e-4
         self.betas = (0.9, 0.95)
         self.grad_norm_clip = 1.0
@@ -308,22 +339,31 @@ class Config:
         self.num_workers = 0 # for DataLoader
         
         # Output
-        self.action_mu_dim = 96
-        self.loss_dim = 128
+        self.adv_dim = 1
+        self.loss_dim = 5
 
 if(__name__ == "__main__"):
     config = Config()
     
-    state_grid = torch.randint(-1, 10, (config.batch_size, config.block_size, 900)).to(config.device)
-    state_mask = torch.randint(-1, 10, (config.batch_size, config.block_size, 900)).to(config.device)
-    action = torch.randint(0, config.vocab_size, (config.batch_size, config.block_size, 1)).to(config.device)
-    x = torch.randint(0, 30, (config.batch_size, config.block_size, 1)).to(config.device)
-    y = torch.randint(0, 30, (config.batch_size, config.block_size, 1)).to(config.device)
-    h = torch.randint(0, 30, (config.batch_size, config.block_size, 1)).to(config.device)
-    w = torch.randint(0, 30, (config.batch_size, config.block_size, 1)).to(config.device)
-    timestep = torch.randint(0, config.max_timestep, (config.batch_size, config.block_size, 1)).to(config.device)
-    
-    model = GPT(config).to(config.device)
+    state_grid = torch.randint(-1, 10, (config.batch_size, 900)).to(config.device)
+    state_mask = torch.randint(-1, 10, (config.batch_size, 900)).to(config.device)
+    action = torch.randint(0, config.vocab_size, (config.batch_size, 1)).to(config.device)
+    x = torch.randint(0, 30, (config.batch_size, 1)).to(config.device)
+    y = torch.randint(0, 30, (config.batch_size, 1)).to(config.device)
+    h = torch.randint(0, 30, (config.batch_size, 1)).to(config.device)
+    w = torch.randint(0, 30, (config.batch_size, 1)).to(config.device)
+    timesteps = torch.randint(0, config.max_timestep, (config.batch_size, 1)).to(config.device)
+
+    # state_grid = torch.randint(-1, 10, (config.batch_size, config.block_size, 900)).to(config.device)
+    # state_mask = torch.randint(-1, 10, (config.batch_size, config.block_size, 900)).to(config.device)
+    # action = torch.randint(0, config.vocab_size, (config.batch_size, config.block_size, 1)).to(config.device)
+    # x = torch.randint(0, 30, (config.batch_size, config.block_size, 1)).to(config.device)
+    # y = torch.randint(0, 30, (config.batch_size, config.block_size, 1)).to(config.device)
+    # h = torch.randint(0, 30, (config.batch_size, config.block_size, 1)).to(config.device)
+    # w = torch.randint(0, 30, (config.batch_size, config.block_size, 1)).to(config.device)
+    # timesteps = torch.randint(0, config.max_timestep, (config.batch_size, config.block_size, 1)).to(config.device)
+
+    model = DT(config).to(config.device)
 
     print("\n====== Input Size ======")
     print("state_grid:", state_grid.shape)
@@ -333,12 +373,22 @@ if(__name__ == "__main__"):
     print("y:", y.shape)
     print("h:", h.shape)
     print("w:", w.shape)
-    print("timestep:", timestep.shape)
+    print("timesteps:", timesteps.shape)
     print("==========================\n")
     
-    logits_loss, logits_action_mu = model(state_grid, state_mask, action, x, y, h, w, timestep)
+    obs = torch.cat([state_grid, state_mask], dim = -1)
+    actions = torch.cat([action, x, y, h, w], dim = -1)
+
+    print("\n====== Input Size ======")
+    print("obs:", obs.shape)
+    print("actions:", actions.shape)
+    print("timesteps:", timesteps.shape)
+    print("==========================\n")
+
+    # logits_loss = model(obs, actions = None, timesteps = timesteps)
+    logits_loss, logits_adv = model(obs, actions = actions, timesteps = timesteps)
     
     print("\n====== Output Size ======")
     print("logits_loss:", logits_loss.shape)
-    print("logits_action_mu:", logits_action_mu.shape)
+    print("logits_adv:", logits_adv.shape)
     print("==========================\n")

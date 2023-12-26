@@ -1,4 +1,5 @@
 from nn import MLP
+from macaw_dt import Config, DT
 from utils import ReplayBuffer
 import yaml
 from omegaconf import OmegaConf
@@ -73,22 +74,32 @@ def rollout_policy(policy: MLP, env, render: bool = False) -> List[Experience]:
     return trajectory, total_reward, success
 
 
-def build_networks_and_buffers(args, env, task_config):
+def build_networks_and_buffers(args, env, task_config, is_MLP = False):
     obs_dim = 900
     action_dim = 5
 
     policy_head = [32, 1] if args.advantage_head_coef is not None else None
-    policy = MLP(
-        [obs_dim] + [args.net_width] * args.net_depth + [action_dim],
-        final_activation=torch.tanh,
-        extra_head_layers=policy_head,
-        w_linear=args.weight_transform,
-    ).to(args.device)
 
-    vf = MLP(
-        [obs_dim] + [args.net_width] * args.net_depth + [1],
-        w_linear=args.weight_transform,
-    ).to(args.device)
+    if is_MLP:
+        policy = MLP(
+            [obs_dim] + [args.net_width] * args.net_depth + [action_dim],
+            final_activation=torch.tanh,
+            extra_head_layers=policy_head,
+            w_linear=args.weight_transform,
+        ).to(args.device)
+
+        vf = MLP(
+            [obs_dim] + [args.net_width] * args.net_depth + [1],
+            w_linear=args.weight_transform,
+        ).to(args.device)
+    else:
+        policy_config = Config()
+        policy_config.loss_dim = action_dim
+        policy = DT(policy_config).to(args.device)
+
+        vf_config = Config()
+        policy_config.loss_dim = 1
+        vf = DT(vf_config).to(args.device)
 
     s, e = map(int, task_config.train_tasks)
     train_buffer_paths = [

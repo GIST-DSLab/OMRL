@@ -22,6 +22,7 @@ def policy_loss_on_batch(policy, vf, batch, adv_coef: float, inner: bool = False
 
     # original_action = batch["actions"]
     action_mu, advantage_prediction = policy(batch["obs"], batch["actions"])
+    import pdb; pdb.set_trace()
     if torch.isnan(action_mu[0][0]):
         import pdb; pdb.set_trace()
         #action_mu = torch.empty_like(action_mu).fill_(0)

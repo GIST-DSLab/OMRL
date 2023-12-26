@@ -84,24 +84,17 @@ class MLP(nn.Module):
                 w = linear(extra_head_layers[idx], extra_head_layers[idx + 1])
                 self.head_seq.add_module(f"fc_{idx}", w)
 
-        # import pdb; pdb.set_trace()
 
-
-    def forward(self, x: torch.tensor, acts: Optional[torch.tensor] = None):
-        if self._head and acts is not None:
-            h = self.pre_seq(x)
-            # print("!!!FORWARD!!!")
-            # print("H:", h.shape, h)
-            # print("ACTS:", acts.shape, acts)
-            head_input = torch.cat((h, acts), -1)
-            # print("Head Input:", head_input.shape)
-            # print("Head Seq:", self.head_seq(head_input))
+    def forward(self, obs: torch.tensor, actions: Optional[torch.tensor] = None):
+        if self._head and actions is not None:
+            h = self.pre_seq(obs)
+            head_input = torch.cat((h, actions), -1)
             
-            if torch.isnan(self._final_activation(self.post_seq(h))[0][0]): 
-                import pdb; pdb.set_trace()
+            # if torch.isnan(self._final_activation(self.post_seq(h))[0][0]): 
+            #     import pdb; pdb.set_trace()
             return self._final_activation(self.post_seq(h)), self.head_seq(head_input)
         else:
-            return self._final_activation(self.seq(x))
+            return self._final_activation(self.seq(obs))
 
 
 if __name__ == "__main__":
