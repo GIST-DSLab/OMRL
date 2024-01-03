@@ -127,7 +127,7 @@ class DT(nn.Module):
                                             nn.Linear(config.n_embd, config.adv_dim), 
                                             nn.ReLU())
         self.vf_head = nn.Sequential(nn.Conv2d(in_channels=1, out_channels=1, kernel_size=1),
-                                       nn.Linear(config.n_embd, config.loss_dim), 
+                                       nn.Linear(config.n_embd, config.adv_dim), 
                                        nn.ReLU())
         
         self.block_size = config.block_size
@@ -213,12 +213,13 @@ class DT(nn.Module):
         # state_mask: (batch, block_size, 900)
         # actions: (batch, block_size, 5)
         # timesteps: (batch, 1, 1)
-
+        
+        batch_size = obs.shape[0]
         if actions == None:
             if obs.ndim == 2:
                 obs = torch.unsqueeze(obs, dim = 1)
             if timesteps == None:
-                timesteps = torch.zeros(size=(self.config.batch_size, 1, 1), dtype=torch.int64).to(obs.device)
+                timesteps = torch.zeros(size=(batch_size, 1, 1), dtype=torch.int64).to(obs.device)
             elif timesteps.ndim == 2:
                 timesteps = torch.unsqueeze(timesteps, dim = 1)
            
@@ -228,21 +229,20 @@ class DT(nn.Module):
             state_grid_embeddings = self.state_grid_encoder(state_grid.type(torch.float32).contiguous())
             # state_mask_embeddings = self.state_mask_encoder(state_mask.type(torch.float32).contiguous())
 
-            self.config.number_of_tokens = 1
             batch_size = state_grid.shape[0]
-            token_embeddings = torch.zeros((batch_size, state_grid.shape[1] * self.config.number_of_tokens, self.config.n_embd), dtype=torch.float32, device=state_grid_embeddings.device)
-            token_embeddings[:,::self.config.number_of_tokens,:] = state_grid_embeddings
-            #token_embeddings[:,1::self.config.number_of_tokens,:] = state_mask_embeddings
+            token_embeddings = torch.zeros((batch_size, state_grid.shape[1], self.config.n_embd), dtype=torch.float32, device=state_grid_embeddings.device)
+            token_embeddings[:,::1,:] = state_grid_embeddings
+            #token_embeddings[:,1::1,:] = state_mask_embeddings
 
             all_global_pos_emb = torch.repeat_interleave(self.global_pos_emb, batch_size, dim=0) # batch_size, traj_length, n_embd
             position_embeddings = torch.gather(all_global_pos_emb, 1, torch.repeat_interleave(timesteps, self.config.n_embd, dim=-1)) + self.pos_emb[:, :token_embeddings.shape[1], :]
             
-            x = self.drop(token_embeddings + torch.repeat_interleave(position_embeddings, self.config.number_of_tokens, dim=1))
+            x = self.drop(token_embeddings + torch.repeat_interleave(position_embeddings, 1, dim=1))
             x = self.blocks(x)
             x = self.ln_f(x)
-            x = x.view(batch_size, self.config.number_of_tokens, -1, self.config.n_embd)
+            x = x.view(batch_size, 1, -1, self.config.n_embd)
 
-            logits_loss = self.vf_head(x)
+            logits_loss = torch.squeeze(self.vf_head(x)[:, -1, :, :], 1)
             
             return logits_loss
 
@@ -252,7 +252,7 @@ class DT(nn.Module):
             if actions.ndim == 2:
                 actions = torch.unsqueeze(actions, dim = 1)
             if timesteps == None:
-                timesteps = torch.zeros(self.config.batch_size, 1, 1).to(obs.device)
+                timesteps = torch.zeros(batch_size, 1, 1, dtype=torch.int64).to(obs.device)
             elif timesteps.ndim == 2:
                 timesteps = torch.unsqueeze(timesteps, dim = 1)
 
@@ -292,8 +292,11 @@ class DT(nn.Module):
             x = self.ln_f(x)
             x = x.view(batch_size, self.config.number_of_tokens, -1, self.config.n_embd)
 
-            logits_loss = self.loss_head(x)
-            logits_adv = self.adv_head(x)
+            try:
+                logits_loss = torch.squeeze(self.loss_head(x)[:, -1, :, :], 1)
+                logits_adv = torch.squeeze(self.adv_head(x)[:, -1, :, :], 1)
+            except:
+                import pdb; pdb.set_trace()
             
             return logits_loss, logits_adv
 
